@@ -4,7 +4,9 @@ import pandas as pd
 
 def show():
     # --- Initialize Database ---
-    conn = sqlite3.connect("jobs.db", isolation_level=None)
+    import os
+    db_path = os.path.join(os.getcwd(), "jobs.db")
+    conn = sqlite3.connect(db_path, isolation_level=None)
     c = conn.cursor()
 
     # --- Create Tables if Not Exists ---
