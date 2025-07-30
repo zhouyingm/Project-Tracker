@@ -46,6 +46,6 @@ def show():
         jobs = c.execute("SELECT * FROM jobs").fetchall()
         if jobs:
             df = pd.DataFrame(jobs, columns=["Job Number", "Branch Number", "Job Name", "Salesforce ID"])
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(df.style.hide(axis="index"), use_container_width=True)
         else:
             st.info("No jobs saved yet.")
