@@ -7,6 +7,30 @@ def show():
     conn = sqlite3.connect("jobs.db", isolation_level=None)
     c = conn.cursor()
 
+    # --- Create Tables if Not Exists ---
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS jobs (
+            job_number TEXT PRIMARY KEY,
+            branch_number TEXT,
+            job_name TEXT,
+            salesforce_id TEXT
+        )
+    ''')
+    
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS wbs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            job_number TEXT,
+            service_line TEXT,
+            wbs_task TEXT,
+            wbs_subtask TEXT,
+            unit_of_measure TEXT,
+            contract_vs_co TEXT,
+            fpa_type TEXT,
+            fpa_subtype TEXT
+        )
+    ''')
+
     # --- Page Setup ---
     st.set_page_config(page_title="View Data", layout="wide")
     st.title("📊 View Jobs & WBS Data")
@@ -44,14 +68,23 @@ def show():
     # --- Display WBS Data for Selected Job ---
     st.subheader("🧱 WBS Data")
     
-    # Get WBS data for the selected job
-    wbs_data = c.execute("""
-        SELECT service_line, wbs_task, wbs_subtask, unit_of_measure, 
-               contract_vs_co, fpa_type, fpa_subtype
-        FROM wbs 
-        WHERE job_number = ?
-        ORDER BY service_line, wbs_task, wbs_subtask
-    """, (selected_job_number,)).fetchall()
+    # Check if wbs table exists
+    try:
+        # Get WBS data for the selected job
+        wbs_data = c.execute("""
+            SELECT service_line, wbs_task, wbs_subtask, unit_of_measure, 
+                   contract_vs_co, fpa_type, fpa_subtype
+            FROM wbs 
+            WHERE job_number = ?
+            ORDER BY service_line, wbs_task, wbs_subtask
+        """, (selected_job_number,)).fetchall()
+    except sqlite3.OperationalError as e:
+        if "no such table" in str(e).lower():
+            st.info("📝 No WBS table found. Please add WBS data in the Create WBS tab first.")
+            wbs_data = []
+        else:
+            st.error(f"Database error: {str(e)}")
+            wbs_data = []
     
     if wbs_data:
         # Create DataFrame for better display
@@ -119,7 +152,15 @@ def show():
     st.subheader("📈 Summary Statistics")
     
     # Get all WBS data for summary
-    all_wbs = c.execute("SELECT * FROM wbs").fetchall()
+    try:
+        all_wbs = c.execute("SELECT * FROM wbs").fetchall()
+    except sqlite3.OperationalError as e:
+        if "no such table" in str(e).lower():
+            st.info("📝 No WBS table found. Please add WBS data in the Create WBS tab first.")
+            all_wbs = []
+        else:
+            st.error(f"Database error: {str(e)}")
+            all_wbs = []
     if all_wbs:
         df_all_wbs = pd.DataFrame(all_wbs, columns=[
             "ID", "Job Number", "Service Line", "WBS Task", "WBS Subtask",
