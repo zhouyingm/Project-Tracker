@@ -126,11 +126,6 @@ def show():
         num_rows="dynamic",
         use_container_width=True,
         hide_index=True,
-        column_config={
-            "Contract vs CO": st.column_config.SelectboxColumnConfig(options=["Contract", "CO"]),
-            "FPA Type": st.column_config.SelectboxColumnConfig(options=["Services", "Materials", "Equipment"]),
-            "FPA Subtype": st.column_config.SelectboxColumnConfig(options=["Labor", "Management", "Other"]),
-        },
         key="wbs_editor"
     )
     
