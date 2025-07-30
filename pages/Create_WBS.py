@@ -174,7 +174,7 @@ def show():
                         row["Budgeted Cost"] if pd.notnull(row["Budgeted Cost"]) else 0
                     ))
             st.success("✅ WBS saved successfully!")
-            st.experimental_rerun()
+            st.rerun()
         except sqlite3.OperationalError as e:
             st.error(f"❌ Error saving WBS: {str(e)}")
             st.info("Please check that the database schema is correct.")
