@@ -1,5 +1,6 @@
 import streamlit as st
 import sqlite3
+import pandas as pd  # ✅ Put this at the top
 
 def show():
     # --- Initialize Database ---
@@ -41,9 +42,10 @@ def show():
                 st.error("Please fill in all required fields.")
 
     # --- Optional: View current saved jobs ---
-    if st.checkbox("Show saved jobs"):
+    if st.checkbox("Show saved jobs"):  # ✅ this should be inside the `show()` function
         jobs = c.execute("SELECT * FROM jobs").fetchall()
         if jobs:
-            st.dataframe(jobs, use_container_width=True)
+            df = pd.DataFrame(jobs, columns=["Job Number", "Branch Number", "Job Name", "Salesforce ID"])
+            st.dataframe(df, use_container_width=True)
         else:
             st.info("No jobs saved yet.")
