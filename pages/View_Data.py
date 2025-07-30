@@ -24,10 +24,14 @@ def show():
             service_line TEXT,
             wbs_task TEXT,
             wbs_subtask TEXT,
+            qty REAL,
             unit_of_measure TEXT,
             contract_vs_co TEXT,
             fpa_type TEXT,
-            fpa_subtype TEXT
+            fpa_subtype TEXT,
+            budgeted_revenue REAL,
+            budgeted_hours REAL,
+            budgeted_cost REAL
         )
     ''')
 
@@ -72,8 +76,9 @@ def show():
     try:
         # Get WBS data for the selected job
         wbs_data = c.execute("""
-            SELECT service_line, wbs_task, wbs_subtask, unit_of_measure, 
-                   contract_vs_co, fpa_type, fpa_subtype
+            SELECT service_line, wbs_task, wbs_subtask, qty, unit_of_measure, 
+                   contract_vs_co, fpa_type, fpa_subtype, budgeted_revenue, 
+                   budgeted_hours, budgeted_cost
             FROM wbs 
             WHERE job_number = ?
             ORDER BY service_line, wbs_task, wbs_subtask
@@ -89,8 +94,9 @@ def show():
     if wbs_data:
         # Create DataFrame for better display
         df_wbs = pd.DataFrame(wbs_data, columns=[
-            "Service Line", "WBS Task", "WBS Subtask", "Unit of Measure",
-            "Contract vs CO", "FPA Type", "FPA Subtype"
+            "Service Line", "WBS Task", "WBS Subtask", "QTY", "Unit of Measure",
+            "Contract vs CO", "FPA Type", "FPA Subtype", "Budgeted Revenue", 
+            "Budgeted Hours", "Budgeted Cost"
         ])
         
         # Display summary metrics
@@ -163,8 +169,9 @@ def show():
             all_wbs = []
     if all_wbs:
         df_all_wbs = pd.DataFrame(all_wbs, columns=[
-            "ID", "Job Number", "Service Line", "WBS Task", "WBS Subtask",
-            "Unit of Measure", "Contract vs CO", "FPA Type", "FPA Subtype"
+            "ID", "Job Number", "Service Line", "WBS Task", "WBS Subtask", "QTY",
+            "Unit of Measure", "Contract vs CO", "FPA Type", "FPA Subtype",
+            "Budgeted Revenue", "Budgeted Hours", "Budgeted Cost"
         ])
         
         col1, col2, col3, col4 = st.columns(4)
