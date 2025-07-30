@@ -95,4 +95,23 @@ if st.button("Save to Database"):
             st.success(f"✅ Job {job_number} and {len(wbs_data)} WBS entries saved to database.")
         except Exception as e:
             st.error(f"❌ Failed to save: {e}")
+st.header("📄 View Saved Jobs and WBS")
+
+with sqlite3.connect(DB_PATH) as conn:
+    jobs_df = pd.read_sql_query("SELECT * FROM jobs", conn)
+    wbs_df = pd.read_sql_query("SELECT * FROM wbs", conn)
+
+# Show Jobs
+with st.expander("📋 Saved Jobs"):
+    if jobs_df.empty:
+        st.info("No jobs saved yet.")
+    else:
+        st.dataframe(jobs_df)
+
+# Show WBS
+with st.expander("🧱 Saved WBS Entries"):
+    if wbs_df.empty:
+        st.info("No WBS entries saved yet.")
+    else:
+        st.dataframe(wbs_df)
 
