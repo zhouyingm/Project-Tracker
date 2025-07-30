@@ -89,75 +89,42 @@ def show():
     
     # Get existing WBS data for the selected job
     wbs_data = c.execute("""
-        SELECT id, service_line, wbs_task, wbs_subtask, qty, unit_of_measure, 
+        SELECT service_line, wbs_task, wbs_subtask, qty, unit_of_measure, 
                contract_vs_co, fpa_type, fpa_subtype, budgeted_revenue, budgeted_hours, budgeted_cost
         FROM wbs 
         WHERE job_number = ?
-        ORDER BY id
+        ORDER BY rowid
     """, (selected_job_number,)).fetchall()
     
-    # Initialize session state for WBS data
-    if 'wbs_items' not in st.session_state:
-        st.session_state.wbs_items = []
+    columns = [
+        "Service Line", "WBS Task", "WBS Subtask", "QTY", "Unit of Measure",
+        "Contract vs CO", "FPA Type", "FPA Subtype", "Budgeted Revenue", "Budgeted Hours", "Budgeted Cost"
+    ]
     
-    # Convert existing data to session state format
-    if not st.session_state.wbs_items and wbs_data:
-        st.session_state.wbs_items = [
-            {
-                'id': row[0],
-                'service_line': row[1],
-                'wbs_task': row[2],
-                'wbs_subtask': row[3],
-                'qty': row[4] if row[4] else 0,
-                'unit_of_measure': row[5],
-                'contract_vs_co': row[6],
-                'fpa_type': row[7],
-                'fpa_subtype': row[8],
-                'budgeted_revenue': row[9] if row[9] else 0,
-                'budgeted_hours': row[10] if row[10] else 0,
-                'budgeted_cost': row[11] if row[11] else 0
-            }
-            for row in wbs_data
-        ]
+    # Prepare DataFrame for editing
+    if wbs_data:
+        df = pd.DataFrame(wbs_data, columns=columns)
+    else:
+        df = pd.DataFrame(columns=columns)
     
-    # Add new WBS item
-    if st.button("➕ Add a WBS Line Item", type="primary"):
-        st.session_state.wbs_items.append({
-            'id': None,
-            'service_line': '',
-            'wbs_task': '',
-            'wbs_subtask': '',
-            'qty': 0,
-            'unit_of_measure': '',
-            'contract_vs_co': '',
-            'fpa_type': '',
-            'fpa_subtype': '',
-            'budgeted_revenue': 0,
-            'budgeted_hours': 0,
-            'budgeted_cost': 0
-        })
-        st.rerun()
+    edited_df = st.data_editor(
+        df,
+        num_rows="dynamic",
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Contract vs CO": st.column_config.SelectboxColumnConfig(options=["Contract", "CO"]),
+            "FPA Type": st.column_config.SelectboxColumnConfig(options=["Services", "Materials", "Equipment"]),
+            "FPA Subtype": st.column_config.SelectboxColumnConfig(options=["Labor", "Management", "Other"]),
+        },
+        key="wbs_editor"
+    )
     
-    # Display WBS items in a table format
-    if st.session_state.wbs_items:
-        # Create DataFrame for display
-        df = pd.DataFrame(st.session_state.wbs_items)
-        
-        # Calculate totals
-        total_revenue = df['budgeted_revenue'].sum()
-        total_hours = df['budgeted_hours'].sum()
-        total_cost = df['budgeted_cost'].sum()
-        
-        # Display the WBS table
-        st.dataframe(
-            df[['service_line', 'wbs_task', 'wbs_subtask', 'qty', 'unit_of_measure', 
-                'contract_vs_co', 'fpa_type', 'fpa_subtype', 'budgeted_revenue', 
-                'budgeted_hours', 'budgeted_cost']].fillna(''),
-            use_container_width=True,
-            hide_index=True
-        )
-        
-        # Display totals
+    # Display totals
+    if not edited_df.empty:
+        total_revenue = edited_df["Budgeted Revenue"].fillna(0).sum()
+        total_hours = edited_df["Budgeted Hours"].fillna(0).sum()
+        total_cost = edited_df["Budgeted Cost"].fillna(0).sum()
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric("Total Budgeted Revenue", f"${total_revenue:,.2f}")
@@ -165,56 +132,15 @@ def show():
             st.metric("Total Budgeted Hours", f"{total_hours:,.0f}")
         with col3:
             st.metric("Total Budgeted Cost", f"${total_cost:,.2f}")
-        
-        # Edit WBS items
-        st.subheader("✏️ Edit WBS Items")
-        
-        for i, item in enumerate(st.session_state.wbs_items):
-            with st.expander(f"Edit WBS Item {i+1}: {item['service_line']} - {item['wbs_task']}"):
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    item['service_line'] = st.text_input("Service Line", item['service_line'], key=f"sl_{i}")
-                    item['wbs_task'] = st.text_input("WBS Task", item['wbs_task'], key=f"wt_{i}")
-                    item['wbs_subtask'] = st.text_input("WBS Subtask", item['wbs_subtask'], key=f"ws_{i}")
-                    item['qty'] = st.number_input("Quantity", min_value=0.0, value=float(item['qty']), key=f"qty_{i}")
-                    item['unit_of_measure'] = st.text_input("Unit of Measure", item['unit_of_measure'], key=f"um_{i}")
-                
-                with col2:
-                    item['contract_vs_co'] = st.selectbox(
-                        "Contract vs CO", 
-                        ["Contract", "CO"], 
-                        index=0 if item['contract_vs_co'] == "Contract" else 1,
-                        key=f"cvc_{i}"
-                    )
-                    item['fpa_type'] = st.selectbox(
-                        "FPA Type", 
-                        ["Services", "Materials", "Equipment"], 
-                        index=0 if item['fpa_type'] == "Services" else (1 if item['fpa_type'] == "Materials" else 2),
-                        key=f"fpat_{i}"
-                    )
-                    item['fpa_subtype'] = st.selectbox(
-                        "FPA Subtype", 
-                        ["Labor", "Management", "Other"], 
-                        index=0 if item['fpa_subtype'] == "Labor" else (1 if item['fpa_subtype'] == "Management" else 2),
-                        key=f"fpas_{i}"
-                    )
-                    item['budgeted_revenue'] = st.number_input("Budgeted Revenue ($)", min_value=0.0, value=float(item['budgeted_revenue']), key=f"rev_{i}")
-                    item['budgeted_hours'] = st.number_input("Budgeted Hours", min_value=0.0, value=float(item['budgeted_hours']), key=f"hrs_{i}")
-                    item['budgeted_cost'] = st.number_input("Budgeted Cost ($)", min_value=0.0, value=float(item['budgeted_cost']), key=f"cost_{i}")
-                
-                # Delete button
-                if st.button(f"🗑️ Delete Item {i+1}", key=f"del_{i}"):
-                    st.session_state.wbs_items.pop(i)
-                    st.rerun()
-        
-        # Save button
-        if st.button("💾 Save & Complete", type="primary"):
-            # Clear existing WBS data for this job
-            c.execute("DELETE FROM wbs WHERE job_number = ?", (selected_job_number,))
-            
-            # Insert new/updated WBS data
-            for item in st.session_state.wbs_items:
+    
+    # Save button
+    if st.button("💾 Save & Complete", type="primary"):
+        # Remove all existing WBS for this job
+        c.execute("DELETE FROM wbs WHERE job_number = ?", (selected_job_number,))
+        # Insert new/edited WBS items
+        for _, row in edited_df.iterrows():
+            # Skip empty rows
+            if not row[["Service Line", "WBS Task", "WBS Subtask"]].isnull().all():
                 c.execute('''
                     INSERT INTO wbs (
                         job_number, service_line, wbs_task, wbs_subtask, qty,
@@ -222,17 +148,15 @@ def show():
                         budgeted_revenue, budgeted_hours, budgeted_cost
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
-                    selected_job_number, item['service_line'], item['wbs_task'], 
-                    item['wbs_subtask'], item['qty'], item['unit_of_measure'],
-                    item['contract_vs_co'], item['fpa_type'], item['fpa_subtype'],
-                    item['budgeted_revenue'], item['budgeted_hours'], item['budgeted_cost']
+                    selected_job_number,
+                    row["Service Line"], row["WBS Task"], row["WBS Subtask"],
+                    row["QTY"] if pd.notnull(row["QTY"]) else 0,
+                    row["Unit of Measure"], row["Contract vs CO"], row["FPA Type"], row["FPA Subtype"],
+                    row["Budgeted Revenue"] if pd.notnull(row["Budgeted Revenue"]) else 0,
+                    row["Budgeted Hours"] if pd.notnull(row["Budgeted Hours"]) else 0,
+                    row["Budgeted Cost"] if pd.notnull(row["Budgeted Cost"]) else 0
                 ))
-            
-            st.success("✅ WBS saved successfully!")
-            st.session_state.wbs_items = []  # Clear session state
-            st.rerun()
+        st.success("✅ WBS saved successfully!")
+        st.experimental_rerun()
     
-    else:
-        st.info("📝 No WBS items yet. Click 'Add a WBS Line Item' to get started.")
-
     conn.close()
