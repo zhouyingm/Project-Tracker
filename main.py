@@ -1,20 +1,48 @@
-import pyodbc
+import streamlit as st
+import pandas as pd
 
-# Create the connection using Windows credentials
-conn = pyodbc.connect(
-    r'DRIVER={ODBC Driver 17 for SQL Server};'
-    r'SERVER=dwh.beis.com;'
-    r'DATABASE=APS_ADHOC_JOBCOST;'
-    r'Trusted_Connection=yes;'
-)
+st.set_page_config(page_title="Project Tracker", layout="wide")
 
-cursor = conn.cursor()
+# --- Title ---
+st.title("📁 BrandSafway Project Management")
 
-# Fix the SQL syntax: "TOP 10 *" instead of "TOP 10*,"
-cursor.execute("SELECT TOP 10 * FROM JOB_COST_DETAIL")  # This will throw an error because * and status overlap
+# --- Job Form ---
+st.header("Step 1: Project Info")
+job_number = st.text_input("Job Number")
+branch_number = st.text_input("Branch Number")
+job_name = st.text_input("Job Name")
+salesforce_id = st.text_input("Salesforce ID (optional)")
 
-for row in cursor.fetchall():
-    print(row)
+# --- Step 2: Create WBS ---
+st.header("Step 2: Create Work Breakdown Structure (WBS)")
 
-cursor.close()
-conn.close()
+num_rows = st.number_input("Number of WBS entries", min_value=1, max_value=20, value=3)
+
+wbs_data = []
+for i in range(int(num_rows)):
+    col1, col2 = st.columns(2)
+    wbs_id = col1.text_input(f"WBS ID {i+1}", key=f"id_{i}")
+    wbs_name = col2.text_input(f"Name {i+1}", key=f"name_{i}")
+    if wbs_id and wbs_name:
+        wbs_data.append({"WBS ID": wbs_id, "Name": wbs_name})
+
+# --- Step 3: Upload Cost File ---
+st.header("Step 3: Upload Cost Excel File")
+uploaded_file = st.file_uploader("Upload .xlsx file", type=["xlsx"])
+
+if uploaded_file:
+    df = pd.read_excel(uploaded_file)
+    st.success("File uploaded successfully!")
+    st.dataframe(df)
+
+# --- Final Step ---
+if st.button("Next: Assign Costs to WBS"):
+    if not job_number or not branch_number:
+        st.error("Please enter at least Job Number and Branch Number.")
+    elif not wbs_data:
+        st.error("Please enter at least one WBS entry.")
+    elif not uploaded_file:
+        st.error("Please upload a cost file.")
+    else:
+        st.success("✅ All data captured. Ready for WBS cost assignment.")
+
