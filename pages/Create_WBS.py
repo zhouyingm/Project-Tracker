@@ -88,13 +88,25 @@ def show():
     st.subheader("📋 WBS Line Items")
     
     # Get existing WBS data for the selected job
-    wbs_data = c.execute("""
-        SELECT service_line, wbs_task, wbs_subtask, qty, unit_of_measure, 
-               contract_vs_co, fpa_type, fpa_subtype, budgeted_revenue, budgeted_hours, budgeted_cost
-        FROM wbs 
-        WHERE job_number = ?
-        ORDER BY rowid
-    """, (selected_job_number,)).fetchall()
+    try:
+        wbs_data = c.execute("""
+            SELECT service_line, wbs_task, wbs_subtask, qty, unit_of_measure, 
+                   contract_vs_co, fpa_type, fpa_subtype, budgeted_revenue, budgeted_hours, budgeted_cost
+            FROM wbs 
+            WHERE job_number = ?
+            ORDER BY rowid
+        """, (selected_job_number,)).fetchall()
+    except sqlite3.OperationalError as e:
+        if "no such table" in str(e).lower():
+            st.info("📝 No WBS table found. Starting with empty table.")
+            wbs_data = []
+        elif "no such column" in str(e).lower():
+            st.warning("⚠️ Database schema mismatch. Please delete jobs.db and restart the app.")
+            st.info("This will recreate the database with the correct schema.")
+            return
+        else:
+            st.error(f"Database error: {str(e)}")
+            wbs_data = []
     
     columns = [
         "Service Line", "WBS Task", "WBS Subtask", "QTY", "Unit of Measure",
@@ -135,28 +147,34 @@ def show():
     
     # Save button
     if st.button("💾 Save & Complete", type="primary"):
-        # Remove all existing WBS for this job
-        c.execute("DELETE FROM wbs WHERE job_number = ?", (selected_job_number,))
-        # Insert new/edited WBS items
-        for _, row in edited_df.iterrows():
-            # Skip empty rows
-            if not row[["Service Line", "WBS Task", "WBS Subtask"]].isnull().all():
-                c.execute('''
-                    INSERT INTO wbs (
-                        job_number, service_line, wbs_task, wbs_subtask, qty,
-                        unit_of_measure, contract_vs_co, fpa_type, fpa_subtype,
-                        budgeted_revenue, budgeted_hours, budgeted_cost
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    selected_job_number,
-                    row["Service Line"], row["WBS Task"], row["WBS Subtask"],
-                    row["QTY"] if pd.notnull(row["QTY"]) else 0,
-                    row["Unit of Measure"], row["Contract vs CO"], row["FPA Type"], row["FPA Subtype"],
-                    row["Budgeted Revenue"] if pd.notnull(row["Budgeted Revenue"]) else 0,
-                    row["Budgeted Hours"] if pd.notnull(row["Budgeted Hours"]) else 0,
-                    row["Budgeted Cost"] if pd.notnull(row["Budgeted Cost"]) else 0
-                ))
-        st.success("✅ WBS saved successfully!")
-        st.experimental_rerun()
+        try:
+            # Remove all existing WBS for this job
+            c.execute("DELETE FROM wbs WHERE job_number = ?", (selected_job_number,))
+            # Insert new/edited WBS items
+            for _, row in edited_df.iterrows():
+                # Skip empty rows
+                if not row[["Service Line", "WBS Task", "WBS Subtask"]].isnull().all():
+                    c.execute('''
+                        INSERT INTO wbs (
+                            job_number, service_line, wbs_task, wbs_subtask, qty,
+                            unit_of_measure, contract_vs_co, fpa_type, fpa_subtype,
+                            budgeted_revenue, budgeted_hours, budgeted_cost
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (
+                        selected_job_number,
+                        row["Service Line"], row["WBS Task"], row["WBS Subtask"],
+                        row["QTY"] if pd.notnull(row["QTY"]) else 0,
+                        row["Unit of Measure"], row["Contract vs CO"], row["FPA Type"], row["FPA Subtype"],
+                        row["Budgeted Revenue"] if pd.notnull(row["Budgeted Revenue"]) else 0,
+                        row["Budgeted Hours"] if pd.notnull(row["Budgeted Hours"]) else 0,
+                        row["Budgeted Cost"] if pd.notnull(row["Budgeted Cost"]) else 0
+                    ))
+            st.success("✅ WBS saved successfully!")
+            st.experimental_rerun()
+        except sqlite3.OperationalError as e:
+            st.error(f"❌ Error saving WBS: {str(e)}")
+            st.info("Please check that the database schema is correct.")
+        except Exception as e:
+            st.error(f"❌ Unexpected error: {str(e)}")
     
     conn.close()
