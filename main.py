@@ -1,6 +1,6 @@
 import streamlit as st
-import job_info
-import create_wbs
+from pages import Job_Info as job_info
+from pages import Create_WBS as create_wbs
 
 page = st.sidebar.selectbox("Navigate to", ["Job Info", "Create WBS"])
 
