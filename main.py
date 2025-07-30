@@ -95,6 +95,9 @@ if st.button("Save to Database"):
             st.success(f"✅ Job {job_number} and {len(wbs_data)} WBS entries saved to database.")
         except Exception as e:
             st.error(f"❌ Failed to save: {e}")
+
+#Viewing Saved Jobs and WBS
+
 st.header("📄 View Saved Jobs and WBS")
 
 with sqlite3.connect(DB_PATH) as conn:
