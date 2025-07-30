@@ -5,7 +5,7 @@ import pandas as pd
 def show():
     # --- Initialize DB ---
     import os
-    db_path = os.path.join(os.getcwd(), "jobs.db")
+    db_path = os.path.join(os.getcwd(), "job_master.db")
     conn = sqlite3.connect(db_path, isolation_level=None)
     c = conn.cursor()
 
