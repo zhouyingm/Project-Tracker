@@ -131,9 +131,16 @@ def show():
     
     # Display totals
     if not edited_df.empty:
+        # Handle None values and ensure we get numeric values
         total_revenue = edited_df["Budgeted Revenue"].fillna(0).sum()
         total_hours = edited_df["Budgeted Hours"].fillna(0).sum()
         total_cost = edited_df["Budgeted Cost"].fillna(0).sum()
+        
+        # Convert to float to handle any None values
+        total_revenue = float(total_revenue) if total_revenue is not None else 0.0
+        total_hours = float(total_hours) if total_hours is not None else 0.0
+        total_cost = float(total_cost) if total_cost is not None else 0.0
+        
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric("Total Budgeted Revenue", f"${total_revenue:,.2f}")
