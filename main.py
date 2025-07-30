@@ -1,3 +1,34 @@
+import sqlite3
+from pathlib import Path
+
+# Create database if it doesn't exist
+DB_PATH = Path("project_tracker.db")
+
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS jobs (
+            job_number TEXT PRIMARY KEY,
+            branch_number TEXT,
+            job_name TEXT,
+            salesforce_id TEXT
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS wbs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            job_number TEXT,
+            wbs_id TEXT,
+            wbs_name TEXT,
+            FOREIGN KEY(job_number) REFERENCES jobs(job_number)
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+init_db()
+
 import streamlit as st
 import pandas as pd
 
@@ -36,13 +67,32 @@ if uploaded_file:
     st.dataframe(df)
 
 # --- Final Step ---
-if st.button("Next: Assign Costs to WBS"):
+if st.button("Save to Database"):
     if not job_number or not branch_number:
         st.error("Please enter at least Job Number and Branch Number.")
     elif not wbs_data:
         st.error("Please enter at least one WBS entry.")
-    elif not uploaded_file:
-        st.error("Please upload a cost file.")
     else:
-        st.success("✅ All data captured. Ready for WBS cost assignment.")
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+
+            # Save job info
+            cursor.execute("""
+                INSERT OR REPLACE INTO jobs (job_number, branch_number, job_name, salesforce_id)
+                VALUES (?, ?, ?, ?)
+            """, (job_number, branch_number, job_name, salesforce_id))
+
+            # Save WBS entries
+            for wbs in wbs_data:
+                cursor.execute("""
+                    INSERT INTO wbs (job_number, wbs_id, wbs_name)
+                    VALUES (?, ?, ?)
+                """, (job_number, wbs["WBS ID"], wbs["Name"]))
+
+            conn.commit()
+            conn.close()
+            st.success(f"✅ Job {job_number} and {len(wbs_data)} WBS entries saved to database.")
+        except Exception as e:
+            st.error(f"❌ Failed to save: {e}")
 
